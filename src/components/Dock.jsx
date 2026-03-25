@@ -8,19 +8,32 @@ import { Tooltip } from 'react-tooltip'
 const Dock = () => {
 
   const dockRef = useRef(null)
+  const dockLeftRef = useRef(0)
+  const iconCentersRef = useRef([])
+  const mouseXRef = useRef(0)
+  const rafRef = useRef(null)
 
-  useGSAP(() => {
+  const { contextSafe } = useGSAP(() => {
     const dock = dockRef.current
     if(!dock) return
 
-    const icons = dock.querySelectorAll('.dock-icon')
+    const icons = Array.from(dock.querySelectorAll('.dock-icon'))
+
+    const measureLayout = () => {
+      const dockRect = dock.getBoundingClientRect()
+      dockLeftRef.current = dockRect.left
+
+      iconCentersRef.current = icons.map((icon) => {
+        const { left, width } = icon.getBoundingClientRect()
+        return left - dockRect.left + width / 2
+      })
+    }
 
     const animateIcons = (mouseX) => {
-      const { left } = dock.getBoundingClientRect()
-      
-      icons.forEach((icon) => {
-        const { left: iconLeft, width } =icon.getBoundingClientRect()
-        const center = iconLeft - left + width / 2
+      icons.forEach((icon, index) => {
+        const center = iconCentersRef.current[index]
+        if (center == null) return
+
         const distance = Math.abs(mouseX - center)
         const intensity = Math.exp(-(distance ** 2.5) / 20000)
 
@@ -28,32 +41,63 @@ const Dock = () => {
           scale: 1 + 0.25 * intensity,
           y: -15 * intensity,
           duration: 0.2,
-          ease: 'power1.out'
+          ease: 'power1.out',
+          overwrite: 'auto',
         })
       })
     }
 
-    const handleMouseMove = (e) => {
-      const { left } = dock.getBoundingClientRect()
+    const runAnimation = () => {
+      if (rafRef.current) return
 
-      animateIcons(e.clientX - left)
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null
+        animateIcons(mouseXRef.current)
+      })
     }
 
-    const resetIcons = () => icons.forEach((icon) => gsap.to(icon, {
-      scale: 1,
-      y: 0,
-      duration: 0.3,
-      ease: 'power1.out'
-    }))
+    const handleMouseEnter = () => {
+      measureLayout()
+    }
 
+    const handleMouseMove = (e) => {
+      mouseXRef.current = e.clientX - dockLeftRef.current
+      runAnimation()
+    }
+
+    // eslint-disable-next-line react-hooks/immutability
+    const resetIcons = contextSafe(() => {
+      icons.forEach((icon) => gsap.to(icon, {
+        scale: 1,
+        y: 0,
+        duration: 0.3,
+        ease: 'power1.out',
+        overwrite: 'auto',
+      }))
+    })
+
+    const handleResize = () => {
+      measureLayout()
+    }
+
+    measureLayout()
+    dock.addEventListener('mouseenter', handleMouseEnter)
     dock.addEventListener('mousemove', handleMouseMove)
     dock.addEventListener('mouseleave', resetIcons)
+    window.addEventListener('resize', handleResize)
 
     return () => {
+      dock.removeEventListener('mouseenter', handleMouseEnter)
       dock.removeEventListener('mousemove', handleMouseMove)
       dock.removeEventListener('mouseleave', resetIcons)
+      window.removeEventListener('resize', handleResize)
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+      gsap.killTweensOf(icons)
     }
-  }, [])
+  }, { scope: dockRef })
 
   const toogleApp = (app) => {}
 
