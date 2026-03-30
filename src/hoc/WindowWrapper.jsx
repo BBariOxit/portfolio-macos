@@ -1,9 +1,9 @@
 import useWindowStore from "@store/window"
-import { Component, useRef } from "react"
+import { useRef } from "react"
 
-const WindowWrapper = (component, windowKey) => {
+const WindowWrapper = (Component, windowKey) => {
   const Wrapped = (props) => {
-    const { focusWindow, windows } = useWindowStore
+    const { focusWindow, windows } = useWindowStore()
     const { isOpen, zIndex } = windows[windowKey]
     const ref = useRef(null)
 
@@ -14,9 +14,7 @@ const WindowWrapper = (component, windowKey) => {
 
   Wrapped.displayName = `WindowWrapper(${Component.displayName || Component.name || 'Component'})`
 
-  return (
-    <div>WindowWrapper</div>
-  )
+  return Wrapped
 }
 
 export default WindowWrapper
