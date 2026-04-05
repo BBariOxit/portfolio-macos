@@ -1,5 +1,5 @@
 import gsap from "gsap"
-import { Draggable } from "gsap/Draggable"
+import { Draggable } from "gsap/draggable"
 
 import { Dock, Navbar, Welcome } from "@components"
 import { Terminal } from "@windows"
